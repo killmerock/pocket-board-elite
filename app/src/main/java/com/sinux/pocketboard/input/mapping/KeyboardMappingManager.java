@@ -16,6 +16,7 @@ public class KeyboardMappingManager {
     private static final int KEYBOARD_MAPPING_CACHE_DEPTH = 2;
     private static final String INPUT_METHOD_KEYBOARD_MAPPING = "KeyboardMapping";
     private static final String TITAN_MODEL_NAME = "Titan";
+    private static final String TITAN_2_MODEL_NAME = "Titan 2";
 
     private final Context context;
     private final LruCache<String, KeyboardMapping> keyboardMappings;
@@ -63,16 +64,29 @@ public class KeyboardMappingManager {
     }
 
     private String getDeviceModelString() {
-        if (TITAN_MODEL_NAME.equalsIgnoreCase(android.os.Build.MODEL)) {
+        String model = android.os.Build.MODEL;
+        if (TITAN_2_MODEL_NAME.equalsIgnoreCase(model)) {
+            return "_titan2";
+        }
+        if (TITAN_MODEL_NAME.equalsIgnoreCase(model)) {
             return "_titan";
         }
-
         return "";
     }
 
-   @NonNull
-   private KeyboardMapping loadKeyboardMapping(String keyMappingFile) throws Exception {
-       KeyboardMappingParser parser = new KeyboardMappingParser(context, keyMappingFile, getDeviceModelString());
-       return parser.parseMapping();
-   }
+    @NonNull
+    private KeyboardMapping loadKeyboardMapping(String keyMappingFile) throws Exception {
+        String modelSuffix = getDeviceModelString();
+        String resourceName = "keyboard_mapping_" + keyMappingFile + modelSuffix;
+        int resourceId = context.getResources().getIdentifier(
+                resourceName, "xml", context.getPackageName());
+
+        if (resourceId == 0 && !modelSuffix.isEmpty()) {
+            modelSuffix = "";
+        }
+
+        KeyboardMappingParser parser =
+                new KeyboardMappingParser(context, keyMappingFile, modelSuffix);
+        return parser.parseMapping();
+    }
 }
