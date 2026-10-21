@@ -46,16 +46,20 @@ public class KeyboardMappingManager {
             return;
         }
 
-        if (keyboardMappings.get(keyMappingFile) == null) {
+        String modelSuffix = getEffectiveModelSuffix(keyMappingFile);
+        String cacheKey = keyMappingFile + modelSuffix;
+
+        KeyboardMapping cachedMapping = keyboardMappings.get(cacheKey);
+        if (cachedMapping == null) {
             try {
-                KeyboardMapping mapping = loadKeyboardMapping(keyMappingFile);
-                keyboardMappings.put(keyMappingFile, mapping);
-                currentMapping = mapping;
+                KeyboardMapping mapping = loadKeyboardMapping(keyMappingFile, modelSuffix);
+                keyboardMappings.put(cacheKey, mapping);
+                currentMapping = KeyboardMappingOverrideStore.apply(context, cacheKey, mapping);
             } catch (Exception e) {
                 toastError();
             }
         } else {
-            currentMapping = keyboardMappings.get(keyMappingFile);
+            currentMapping = KeyboardMappingOverrideStore.apply(context, cacheKey, cachedMapping);
         }
     }
 
@@ -74,19 +78,33 @@ public class KeyboardMappingManager {
         return "";
     }
 
-    @NonNull
-    private KeyboardMapping loadKeyboardMapping(String keyMappingFile) throws Exception {
+    private String getEffectiveModelSuffix(String keyMappingFile) {
         String modelSuffix = getDeviceModelString();
-        String resourceName = "keyboard_mapping_" + keyMappingFile + modelSuffix;
-        int resourceId = context.getResources().getIdentifier(
-                resourceName, "xml", context.getPackageName());
 
-        if (resourceId == 0 && !modelSuffix.isEmpty()) {
-            modelSuffix = "";
+        if (!modelSuffix.isEmpty()) {
+            String resourceName = "keyboard_mapping_" + keyMappingFile + modelSuffix;
+            int resourceId = context.getResources().getIdentifier(
+                    resourceName, "xml", context.getPackageName());
+
+            if (resourceId == 0) {
+                modelSuffix = "";
+            }
         }
 
-        KeyboardMappingParser parser =
-                new KeyboardMappingParser(context, keyMappingFile, modelSuffix);
-        return parser.parseMapping();
+        return modelSuffix;
+    }
+
+    @NonNull
+    private KeyboardMapping loadKeyboardMapping(
+            String keyMappingFile,
+            String modelSuffix
+    ) throws Exception {
+        KeyboardMapping baseMapping = new KeyboardMappingParser(
+                context,
+                keyMappingFile,
+                modelSuffix
+        ).parseMapping();
+
+        return baseMapping;
     }
 }
